@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Remote Control Settings</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            width: 320px;
+            padding: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+        }
+
+        h1 {
+            font-size: 18px;
+            margin-bottom: 16px;
+            font-weight: 600;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 13px;
+            backdrop-filter: blur(10px);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #fbbf24;
+        }
+
+        .status.connected .status-dot {
+            background: #10b981;
+        }
+
+        .status.error .status-dot {
+            background: #ef4444;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            opacity: 0.9;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+        }
+
+        input:focus {
+            outline: 2px solid #fff;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.95);
+            color: #667eea;
+            transition: transform 0.1s ease;
+        }
+
+        button:hover {
+            transform: scale(1.02);
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .hint {
+            font-size: 12px;
+            margin-top: 4px;
+            opacity: 0.8;
+        }
+
+        .message {
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            font-size: 13px;
+            text-align: center;
+        }
+
+        .message.success {
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid rgba(16, 185, 129, 0.5);
+        }
+
+        .message.error {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <h1>🎬 YouTube Remote Control</h1>
+
+    <div id="status" class="status">
+        <span class="status-dot"></span>
+        <span id="statusText">Checking connection...</span>
+    </div>
+
+    <div id="message"></div>
+
+    <form id="settingsForm">
+        <div class="form-group">
+            <label for="backendUrl">Flask Backend URL</label>
+            <input
+                type="text"
+                id="backendUrl"
+                placeholder="http://localhost:5000"
+                required
+            />
+            <div class="hint">Enter your Flask server URL</div>
+        </div>
+
+        <button type="submit" id="saveBtn">Save & Test Connection</button>
+    </form>
+
+    <script src="popup.js"></script>
+</body>
+</html>
