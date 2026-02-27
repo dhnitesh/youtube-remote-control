@@ -1,109 +1,66 @@
 """
-Windows System Volume Controller
-Uses pycaw to control Windows audio system
+Cross-platform System Volume Controller
+Uses pycaw on Windows, osascript on macOS
 """
 
-from ctypes import cast, POINTER
-from comtypes import CLSCTX_ALL
-from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+import platform
+import subprocess
+
+system = platform.system()
 
 
 class VolumeController:
-    """Windows system volume controller using pycaw"""
-
-    def __init__(self):
-        """Initialize the volume controller"""
-        try:
-            devices = AudioUtilities.GetSpeakers()
-            interface = devices.Activate(
-                IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
-            self.volume = cast(interface, POINTER(IAudioEndpointVolume))
-        except Exception as e:
-            print(f"Error initializing volume controller: {e}")
-            self.volume = None
+    """Cross-platform system volume controller"""
 
     def get_system_volume(self):
-        """
-        Get current system volume
-
-        Returns:
-            int: Volume level 0-100, or None if unavailable
-        """
-        if not self.volume:
-            return None
-        try:
-            # Get volume as scalar (0.0 to 1.0)
-            current_volume = self.volume.GetMasterVolumeLevelScalar()
-            # Convert to percentage
-            return int(current_volume * 100)
-        except Exception as e:
-            print(f"Error getting volume: {e}")
-            return None
+        if system == "Darwin":
+            result = subprocess.run(
+                ["osascript", "-e", "output volume of (get volume settings)"],
+                capture_output=True, text=True
+            )
+            return int(result.stdout.strip()) if result.returncode == 0 else None
+        elif system == "Windows":
+            return self._windows_get_volume()
+        return None
 
     def set_system_volume(self, level):
-        """
-        Set system volume
-
-        Args:
-            level (int): Volume level 0-100
-
-        Returns:
-            bool: True if successful, False otherwise
-        """
-        if not self.volume:
-            return False
-        try:
-            # Clamp level between 0 and 100
-            level = max(0, min(100, int(level)))
-            # Convert to scalar (0.0 to 1.0)
-            scalar_level = level / 100.0
-            self.volume.SetMasterVolumeLevelScalar(scalar_level, None)
-            return True
-        except Exception as e:
-            print(f"Error setting volume: {e}")
-            return False
+        level = max(0, min(100, int(level)))
+        if system == "Darwin":
+            result = subprocess.run(
+                ["osascript", "-e", f"set volume output volume {level}"],
+                capture_output=True, text=True
+            )
+            return result.returncode == 0
+        elif system == "Windows":
+            return self._windows_set_volume(level)
+        return False
 
     def get_mute_state(self):
-        """
-        Check if system is muted
-
-        Returns:
-            bool: True if muted, False if not, None if unavailable
-        """
-        if not self.volume:
+        if system == "Darwin":
+            result = subprocess.run(
+                ["osascript", "-e", "output muted of (get volume settings)"],
+                capture_output=True, text=True
+            )
+            if result.returncode == 0:
+                return result.stdout.strip() == "true"
             return None
-        try:
-            return bool(self.volume.GetMute())
-        except Exception as e:
-            print(f"Error getting mute state: {e}")
-            return None
+        elif system == "Windows":
+            return self._windows_get_mute()
+        return None
 
     def set_mute(self, muted):
-        """
-        Set system mute state
-
-        Args:
-            muted (bool): True to mute, False to unmute
-
-        Returns:
-            bool: True if successful, False otherwise
-        """
-        if not self.volume:
-            return False
-        try:
-            self.volume.SetMute(1 if muted else 0, None)
-            return True
-        except Exception as e:
-            print(f"Error setting mute: {e}")
-            return False
+        if system == "Darwin":
+            val = "true" if muted else "false"
+            result = subprocess.run(
+                ["osascript", "-e", f"set volume output muted {val}"],
+                capture_output=True, text=True
+            )
+            return result.returncode == 0
+        elif system == "Windows":
+            return self._windows_set_mute(muted)
+        return False
 
     def toggle_mute(self):
-        """
-        Toggle mute state
-
-        Returns:
-            bool: New mute state, or None if failed
-        """
         current_mute = self.get_mute_state()
         if current_mute is None:
             return None
@@ -112,18 +69,59 @@ class VolumeController:
             return new_mute
         return None
 
+    # --- Windows helpers (lazy import to avoid errors on other platforms) ---
+
+    def _get_windows_volume(self):
+        if not hasattr(self, "_win_vol"):
+            from ctypes import cast, POINTER
+            from comtypes import CLSCTX_ALL
+            from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+            devices = AudioUtilities.GetSpeakers()
+            interface = devices.Activate(
+                IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+            self._win_vol = cast(interface, POINTER(IAudioEndpointVolume))
+        return self._win_vol
+
+    def _windows_get_volume(self):
+        try:
+            vol = self._get_windows_volume()
+            return int(vol.GetMasterVolumeLevelScalar() * 100)
+        except Exception as e:
+            print(f"Error getting volume: {e}")
+            return None
+
+    def _windows_set_volume(self, level):
+        try:
+            vol = self._get_windows_volume()
+            vol.SetMasterVolumeLevelScalar(level / 100.0, None)
+            return True
+        except Exception as e:
+            print(f"Error setting volume: {e}")
+            return False
+
+    def _windows_get_mute(self):
+        try:
+            vol = self._get_windows_volume()
+            return bool(vol.GetMute())
+        except Exception as e:
+            print(f"Error getting mute state: {e}")
+            return None
+
+    def _windows_set_mute(self, muted):
+        try:
+            vol = self._get_windows_volume()
+            vol.SetMute(1 if muted else 0, None)
+            return True
+        except Exception as e:
+            print(f"Error setting mute: {e}")
+            return False
+
 
 # Global instance
 _volume_controller = None
 
 
 def get_volume_controller():
-    """
-    Get or create the global volume controller instance
-
-    Returns:
-        VolumeController: The volume controller instance
-    """
     global _volume_controller
     if _volume_controller is None:
         _volume_controller = VolumeController()

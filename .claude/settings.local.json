@@ -4,7 +4,8 @@
       "Bash(python app.py:*)",
       "Bash(timeout:*)",
       "Bash(exit:*)",
-      "Bash(pip install:*)"
+      "Bash(pip install:*)",
+      "Bash(source:*)"
     ]
   }
 }
